@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.1
+
+- Thumbnail captions no longer repeat a heading's maths. Every maths renderer
+  leaves several representations of one formula in the DOM, and `textContent`
+  concatenated all of them: MathJax 2, which Quarto's reveal format ships,
+  emits the visual spans, a hidden MathML mirror and the original TeX in a
+  `<script type="math/tex">`, so `## Block length and $\Delta f$` came out as
+  "Block length and Δ𝑓Δf\Delta f". Titles are now read from a copy with the
+  duplicates removed, handling MathJax 2, MathJax 3 (`<mjx-container>`, whose
+  `aria-label` is used) and KaTeX.
+- `example.qmd` has a slide whose heading contains maths, so the demo deck
+  exercises this.
+
 ## 0.4.0
 
 - Resizable rail: drag its right edge, double-click to reset, or use the arrow

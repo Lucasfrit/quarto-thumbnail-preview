@@ -287,6 +287,29 @@ window.RevealThumbnailPreview = function () {
         applyLayout();
       };
 
+      // textContent on a typeset heading is not the heading's text. Every
+      // maths renderer leaves several representations of one formula in the
+      // DOM and textContent concatenates all of them:
+      //
+      //   MathJax 2 (what Quarto's reveal format ships) renders the visual
+      //   spans, a hidden MathML mirror for screen readers, and the original
+      //   TeX in a <script type="math/tex">. A heading reading "what df it
+      //   buys" comes out as "what dfdf\Delta f it buys".
+      //   MathJax 3 uses <mjx-container>, which carries the spoken text in
+      //   aria-label. KaTeX keeps its MathML mirror in .katex-mathml.
+      //
+      // So take the text from a copy with the duplicates removed.
+      const headingText = (heading) => {
+        const copy = heading.cloneNode(true);
+        copy.querySelectorAll("mjx-container").forEach((node) => {
+          node.replaceWith(document.createTextNode(node.getAttribute("aria-label") || ""));
+        });
+        copy.querySelectorAll(
+          "script[type^='math/tex'], .MathJax_Preview, .MJX_Assistive_MathML, .katex-mathml"
+        ).forEach((node) => node.remove());
+        return copy.textContent.replace(/\s+/g, " ").trim();
+      };
+
       const buildPreviews = () => {
         const scrollTop = list.scrollTop;
         list.replaceChildren();
@@ -294,8 +317,8 @@ window.RevealThumbnailPreview = function () {
 
         deck.getSlides().forEach((slide, linearIndex) => {
           const indices = deck.getIndices(slide);
-          const title = slide.querySelector("h1, h2, h3, [data-slide-title]")?.textContent?.trim()
-            || `Slide ${linearIndex + 1}`;
+          const heading = slide.querySelector("h1, h2, h3, [data-slide-title]");
+          const title = (heading && headingText(heading)) || `Slide ${linearIndex + 1}`;
 
           // A real <button> may not contain headings, lists or links, and a
           // slide clone contains all three. role=button keeps the semantics

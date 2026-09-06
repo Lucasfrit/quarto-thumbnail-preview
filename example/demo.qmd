@@ -88,6 +88,15 @@ The deck is genuinely narrower, so the slide starts where the sidebar ends inste
 :::
 :::::
 
+## Resolution $\Delta f = F_s/N$ in a heading
+
+A heading may contain maths, and the thumbnail caption should show it as
+maths rather than as the renderer's three internal copies of it.
+
+$$
+\Delta f = \frac{F_s}{N}
+$$
+
 ## Some equations
 
 For a mass-spring-damper system,
