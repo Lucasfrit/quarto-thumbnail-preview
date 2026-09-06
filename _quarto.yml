@@ -1,0 +1,8 @@
+# Declaring a project makes the repository root the extension search root, so
+# `quarto render example/demo.qmd` finds `_extensions/thumbnail-preview`.
+# Without this, Quarto looks for `_extensions` beside the .qmd itself and the
+# demo fails with "Specified Reveal plugin directory does not exist".
+project:
+  type: default
+  render:
+    - example/demo.qmd
