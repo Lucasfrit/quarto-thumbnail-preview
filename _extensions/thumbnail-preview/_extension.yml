@@ -1,0 +1,25 @@
+title: Thumbnail Preview
+author: Lucasfrit
+version: 0.4.0
+quarto-required: ">=1.2.0"
+contributes:
+  revealjs-plugins:
+    - name: RevealThumbnailPreview
+      script:
+        - thumbnail-preview.js
+      stylesheet:
+        - thumbnail-preview.css
+      config:
+        thumbnailPreview:
+          shortcut: p
+          drawerWidth: 280
+          # previewWidth is intentionally NOT defaulted here. Quarto cannot
+          # report which options the user actually set, so a default would be
+          # indistinguishable from a deliberate value -- and setting only
+          # drawerWidth would then leave dead space beside the thumbnails.
+          # Unset, the plugin derives it as drawerWidth - 42 (the rail's own chrome).
+          mode: pinned
+          allowModeToggle: true
+          allowResize: true
+          minDrawerWidth: 140
+          accentColor: "#4c8dff"

@@ -1,0 +1,395 @@
+/*
+ * Thumbnail preview sidebar for Quarto + Reveal.js
+ *
+ * Two modes:
+ *   overlay - the drawer slides over the deck and closes after navigating
+ *   pinned  - the drawer owns a permanent strip on the left and the deck is
+ *             rescaled into the remaining width, so nothing overlaps
+ */
+
+:root {
+  /* JS writes the *-config vars from the Quarto YAML; the derived vars below
+     are what the rest of the sheet uses, so media queries can still clamp
+     them without being outranked by the inline style on <html>. */
+  --tp-drawer-width-config: 280px;
+  --tp-preview-width-config: 220px;
+  --tp-drawer-width: var(--tp-drawer-width-config);
+  --tp-preview-width: min(
+    var(--tp-preview-width-config),
+    calc(var(--tp-drawer-width) - 42px)
+  );
+  --tp-slide-aspect: 1.5;
+  --tp-scale: 0.2;
+  --tp-accent: #4c8dff;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+.tp-drawer,
+.tp-toggle {
+  font-size: 16px;
+  line-height: 1.3;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.tp-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10000;
+  width: var(--tp-drawer-width);
+  box-sizing: border-box;
+  transform: translateX(calc(-1 * var(--tp-drawer-width) - 16px));
+  transition: transform 180ms ease;
+  background: rgba(20, 22, 27, 0.97);
+  color: white;
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.24);
+  display: flex;
+  flex-direction: column;
+}
+
+.tp-drawer.is-open,
+.tp-drawer.is-pinned {
+  transform: translateX(0);
+}
+
+/* Pinned is a layout element, not a floating panel. */
+.tp-drawer.is-pinned {
+  box-shadow: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.tp-header {
+  height: 54px;
+  flex: 0 0 54px;
+  padding: 0 10px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.tp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tp-close,
+.tp-pin,
+.tp-toggle {
+  border: 0;
+  font: inherit;
+}
+
+.tp-close,
+.tp-pin {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tp-close {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.tp-pin {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.tp-close:hover,
+.tp-pin:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.tp-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px 12px 12px;
+}
+
+.tp-entry {
+  display: block;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 8px;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* Reserved at full width so switching slides does not reflow the rail. */
+  outline: 4px solid transparent;
+  outline-offset: -1px;
+  transition: background 120ms ease, outline-color 120ms ease;
+}
+
+.tp-entry:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tp-entry:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline-color: var(--tp-accent);
+}
+
+/* The current slide reads at a glance, PowerPoint-style: a heavy accent ring
+   around the whole entry rather than a hairline. */
+.tp-entry.is-active {
+  background: rgba(255, 255, 255, 0.13);
+  outline-color: var(--tp-accent);
+}
+
+.tp-entry.is-active .tp-frame {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.tp-entry.is-active .tp-number {
+  opacity: 1;
+  font-weight: 700;
+  color: var(--tp-accent);
+}
+
+.tp-entry.is-active .tp-title {
+  font-weight: 600;
+}
+
+.tp-frame {
+  position: relative;
+  width: var(--tp-preview-width);
+  aspect-ratio: var(--tp-slide-aspect);
+  overflow: hidden;
+  background: white;
+  color: #111;
+  border-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.tp-slide-clone {
+  position: absolute !important;
+  transform: scale(var(--tp-scale)) !important;
+  transform-origin: top left !important;
+  inset: 0 auto auto 0 !important;
+  display: block !important;
+  box-sizing: border-box;
+  overflow: hidden;
+  margin: 0 !important;
+  pointer-events: none !important;
+}
+
+.tp-slide-clone .fragment {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.tp-caption {
+  display: grid;
+  grid-template-columns: 1.6em 1fr;
+  gap: 6px;
+  align-items: baseline;
+  margin-top: 7px;
+  font-size: 12px;
+}
+
+.tp-number {
+  opacity: 0.65;
+  text-align: right;
+}
+
+.tp-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sits on the rail's right edge; drag to resize the previews. */
+.tp-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.tp-resize::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.tp-resize:hover::before,
+.tp-resize:focus-visible::before,
+body.tp-resizing .tp-resize::before {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.tp-resize:focus-visible {
+  outline: none;
+}
+
+/* Text selection and the drawer's slide transition both fight a live drag. */
+body.tp-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.tp-resizing .tp-drawer {
+  transition: none;
+}
+
+.tp-toggle {
+  position: fixed;
+  z-index: 9999;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 56px;
+  border-radius: 0 10px 10px 0;
+  background: rgba(20, 22, 27, 0.88);
+  color: white;
+  cursor: pointer;
+  box-shadow: 2px 2px 12px rgba(0, 0, 0, 0.18);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.tp-toggle:hover {
+  transform: translateY(-50%) translateX(2px);
+}
+
+.tp-toggle.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+ * PINNED MODE
+ * -----------
+ * Reveal computes its scale from the .reveal wrapper's offsetWidth/offsetHeight
+ * (getComputedSlideSize -> dom.wrapper.offsetWidth), not from the viewport
+ * element. So the deck only has to be inset by the rail width and asked to
+ * relayout; the drawer then sits in genuinely vacated space instead of on top
+ * of the slide.
+ *
+ * Insetting .reveal rather than <body> also carries Quarto's own deck chrome
+ * (progress bar, slide number, menu button) along with the slide.
+ *
+ * Screen only: PDF export and Reveal's print view reset .reveal themselves.
+ */
+@media screen {
+  .reveal.tp-pinned-deck {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: var(--tp-drawer-width) !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+
+  body.tp-pinned-page {
+    overflow: hidden;
+  }
+
+  body.tp-pinned-page .tp-drawer.is-pinned {
+    left: 0;
+  }
+}
+
+/* Reveal's scroll view and its print view both replace the layout model, so
+   pinning has to stand down for either (the deck menu can switch to them at
+   runtime, which is why this is not only guarded in JS). */
+@media screen {
+  .reveal.tp-pinned-deck.reveal-scroll,
+  .reveal-print .reveal.tp-pinned-deck {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .reveal-print .tp-drawer,
+  .reveal-print .tp-toggle {
+    display: none !important;
+  }
+}
+
+/* Each thumbnail carries its own inert `.reveal` so the clone keeps the deck's
+   typography. These rules neutralize the sizing/transform that `.reveal` and
+   `.slides` normally carry, which only make sense for the live deck. */
+.tp-frame .tp-preview-reveal {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+
+.tp-frame .tp-preview-slides {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+  perspective: none !important;
+  text-align: initial;
+}
+
+.tp-frame .tp-preview-slides > section.tp-slide-clone {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Reveal centres slides by writing an inline `top` during layout, which the
+   clone cannot inherit. Flex centring reproduces it at thumbnail scale. */
+.tp-frame .tp-preview-slides > section.tp-slide-clone.tp-center {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media screen and (max-width: 720px) {
+  /* A permanent 280px rail is usually too aggressive on a phone. */
+  :root {
+    --tp-drawer-width: min(var(--tp-drawer-width-config), 42vw);
+  }
+}
+
+@media print {
+  .tp-drawer,
+  .tp-toggle {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-drawer,
+  .tp-entry,
+  .tp-toggle {
+    transition: none;
+  }
+}

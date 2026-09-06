@@ -1,0 +1,154 @@
+---
+title: "Mini Slide Preview Demo"
+subtitle: "Quarto + Reveal.js"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    progress: false
+    transition: none
+    background-transition: none
+    width: 1050
+    height: 700
+revealjs-plugins:
+  - thumbnail-preview
+thumbnail-preview:
+  mode: pinned
+  drawerWidth: 280
+  shortcut: p
+  allowModeToggle: true
+---
+
+## Pinned thumbnail sidebar
+
+This version starts in **pinned mode**.
+
+The sidebar permanently occupies the left side and Reveal.js **rescales the real slide into the remaining viewport width**.
+
+- Click a thumbnail to navigate
+- The current slide is highlighted
+- Click **⇥** in the sidebar header to switch to overlay mode
+- Press **P** to show/hide the sidebar
+- Drag the sidebar's right edge to resize the previews
+
+::: {.notes}
+Explain the FEA result.
+
+Mention that the stress concentration is expected.
+
+Transition: "So how do we fix it?"
+:::
+
+## Two modes
+
+::::: columns
+::: {.column width="50%"}
+### Pinned
+
+``` yaml
+thumbnail-preview:
+  mode: pinned
+```
+
+The sidebar takes real screen width and the presentation is squeezed/rescaled beside it.
+:::
+
+::: {.column width="50%"}
+### Overlay
+
+``` yaml
+thumbnail-preview:
+  mode: overlay
+```
+
+The sidebar slides over the presentation, like the first prototype.
+:::
+:::::
+
+## Design concept
+
+::::: columns
+::: {.column width="55%"}
+### Why this works
+
+Reveal measures its scale from the `.reveal` wrapper, not from the browser window. Pinned mode insets that wrapper by the rail width and calls `Reveal.layout()`.
+
+The deck is genuinely narrower, so the slide starts where the sidebar ends instead of sitting underneath it.
+:::
+
+::: {.column width="45%"}
+### It handles
+
+- text
+- equations
+- images
+- code blocks
+- columns
+- most normal Quarto content
+:::
+:::::
+
+## Some equations
+
+For a mass-spring-damper system,
+
+$$
+m\ddot{x} + c\dot{x} + kx = F(t)
+$$
+
+and the undamped natural frequency is
+
+$$
+\omega_n = \sqrt{\frac{k}{m}}.
+$$
+
+## A code slide
+
+``` python
+import numpy as np
+
+x = np.linspace(0, 2*np.pi, 200)
+y = np.sin(x)
+```
+
+The code block above should also appear in the miniature preview.
+
+## Fragment demo
+
+The thumbnail intentionally shows **all fragments** so it acts like a slide preview rather than replaying presentation state.
+
+. . .
+
+First fragment.
+
+. . .
+
+Second fragment.
+
+. . .
+
+Third fragment.
+
+## Navigation demo
+
+Clicking a thumbnail uses Reveal's own slide indices, so navigation stays in sync with the deck.
+
+In **pinned mode**, the rail remains visible after navigation.
+
+## Final slide
+
+### Configuration
+
+To start permanently pinned:
+
+``` yaml
+revealjs-plugins:
+  - thumbnail-preview
+thumbnail-preview:
+  mode: pinned
+  drawerWidth: 280
+```
+
+The key is **top level and kebab-case**. Quarto only forwards plugin options declared in `_extension.yml`, and it looks them up under the kebab-cased name.
+
+Set `mode: overlay` to get the slide-over behavior.
