@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0
+
+- Previews are built when they come near the rail's viewport and thrown away
+  when they leave it. A preview is a copy of a whole slide, so it carries its
+  own `.reveal` and `<section>`, and every Reveal rule keying on those matches
+  inside it; Reveal rewrites classes on the deck root on every navigation, and
+  the browser then recalculates style for each live preview. On a 38-slide
+  deck that was 1.2 s of blocked main thread per slide change with the rail
+  pinned. Only about a dozen previews now exist at a time and the same deck
+  costs 0.25 s. The lead is 60% of the rail's height either side of what is on
+  screen — about five entries, more than a drag or a keypress can outrun.
+- A closed rail is taken out of the layout (`display: none`) once its slide-out
+  has finished, rather than left translated off screen. Style invalidation is
+  not skipped by `visibility`, `content-visibility` or `contain`; only
+  `display: none` stops it, so a hidden rail now costs nothing at all.
+
 ## 0.4.1
 
 - Thumbnail captions no longer repeat a heading's maths. Every maths renderer

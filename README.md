@@ -144,6 +144,20 @@ used only as a fallback when the window is too narrow to pin (see below).
 
 ## Implementation notes
 
+- **Previews are built lazily.** A preview is a copy of a whole slide, so it
+  carries its own `.reveal` and `<section>`, and every Reveal rule that keys on
+  those matches inside it. Reveal rewrites classes on the deck root on every
+  navigation, so each live preview is style the browser recalculates on every
+  slide change — a 38-slide deck cost 1.2 s of blocked main thread per change
+  with all of them built. An `IntersectionObserver` on the rail mounts a
+  preview when it comes within 60% of the rail's height of the viewport and
+  unmounts it when it leaves, which keeps about a dozen alive and the same deck
+  at 0.25 s. Frames stay in place either way, so nothing moves and the scroll
+  position is stable.
+- **A closed rail is `display: none`,** not translated off screen. Style
+  invalidation is not skipped by `visibility`, `content-visibility` or
+  `contain`; only `display: none` stops it. The class is applied after the
+  slide-out transition so the animation still runs.
 - Each thumbnail wraps its clone in its own inert `<div class="reveal">`.
   Quarto scopes all deck typography to `.reveal ...`, so without that wrapper
   the previews render unstyled; and because Reveal only ever queries inside its

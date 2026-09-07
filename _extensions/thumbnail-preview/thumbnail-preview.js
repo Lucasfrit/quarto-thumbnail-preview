@@ -111,6 +111,8 @@ window.RevealThumbnailPreview = function () {
       handle.setAttribute("aria-valuenow", String(configDrawerWidth));
       if (allowResize) drawer.appendChild(handle);
 
+      let previewObserver = null;
+
       let entries = [];
       let mode = initialMode;
       let overlayOpen = false;
@@ -361,45 +363,70 @@ window.RevealThumbnailPreview = function () {
           const frame = document.createElement("div");
           frame.className = "tp-frame";
 
-          const clone = slide.cloneNode(true);
-          stripIds(clone);
-          // Keep the slide's own classes (Quarto styles hang off things like
-          // .quarto-title-block); drop only Reveal's navigation state.
-          clone.classList.remove("present", "past", "future", "stack");
-          clone.classList.add("tp-slide-clone");
-          clone.removeAttribute("data-state");
-          if (cfg.center || slide.classList.contains("center")) {
-            clone.classList.add("tp-center");
-          }
-          clone.style.width = `${slideWidth}px`;
-          clone.style.height = `${slideHeight}px`;
+          // The clone is built when the entry comes near the rail's viewport
+          // and thrown away when it goes far from it. It is not laziness for
+          // its own sake: a preview is a copy of a whole slide, so it carries
+          // its own `.reveal` and `<section>`, and every Reveal rule keying on
+          // those matches inside it. Reveal rewrites classes on the deck root
+          // on every navigation, and the browser then recalculates style for
+          // each live preview. Measured on a 38-slide deck: 187 ms of blocked
+          // main thread per slide change with all previews built, 77 ms with
+          // eight. Keeping only what could plausibly be seen is the whole
+          // difference, and nothing about the rail looks different.
+          const mount = () => {
+            if (frame.firstChild) return;
 
-          // A preview should show the finished slide, not replay its build.
-          clone.querySelectorAll(".fragment").forEach((fragment) => {
-            fragment.classList.add("visible");
-            fragment.style.visibility = "visible";
-            fragment.style.opacity = "1";
-          });
+            const clone = slide.cloneNode(true);
+            stripIds(clone);
+            // Keep the slide's own classes (Quarto styles hang off things
+            // like .quarto-title-block); drop only Reveal's navigation state.
+            clone.classList.remove("present", "past", "future", "stack");
+            clone.classList.add("tp-slide-clone");
+            clone.removeAttribute("data-state");
+            if (cfg.center || slide.classList.contains("center")) {
+              clone.classList.add("tp-center");
+            }
+            clone.style.width = `${slideWidth}px`;
+            clone.style.height = `${slideHeight}px`;
 
-          // The clone needs a `.reveal` ancestor or it loses every themed
-          // rule (Quarto scopes all deck typography to `.reveal ...`). Reveal
-          // itself only ever queries inside its own wrapper, so this second,
-          // inert `.reveal` is styling context without joining the deck.
-          const previewSlides = document.createElement("div");
-          previewSlides.className = "slides tp-preview-slides";
-          previewSlides.appendChild(clone);
+            // A preview should show the finished slide, not replay its build.
+            clone.querySelectorAll(".fragment").forEach((fragment) => {
+              fragment.classList.add("visible");
+              fragment.style.visibility = "visible";
+              fragment.style.opacity = "1";
+            });
 
-          const previewDeck = document.createElement("div");
-          previewDeck.className = "reveal tp-preview-reveal";
-          previewDeck.setAttribute("aria-hidden", "true");
-          // The clone is decoration: it must not be focusable or clickable.
-          // inert covers browsers that support it; stripping href covers the
-          // rest, since a live link inside the entry would hijack the click.
-          previewDeck.inert = true;
-          previewDeck.setAttribute("inert", "");
-          clone.querySelectorAll("a[href]").forEach((link) => link.removeAttribute("href"));
-          previewDeck.appendChild(previewSlides);
-          frame.appendChild(previewDeck);
+            // The clone needs a `.reveal` ancestor or it loses every themed
+            // rule (Quarto scopes all deck typography to `.reveal ...`).
+            // Reveal itself only ever queries inside its own wrapper, so this
+            // second, inert `.reveal` is styling context without joining the
+            // deck.
+            const previewSlides = document.createElement("div");
+            previewSlides.className = "slides tp-preview-slides";
+            previewSlides.appendChild(clone);
+
+            const previewDeck = document.createElement("div");
+            previewDeck.className = "reveal tp-preview-reveal";
+            previewDeck.setAttribute("aria-hidden", "true");
+            // The clone is decoration: it must not be focusable or clickable.
+            // inert covers browsers that support it; stripping href covers
+            // the rest, since a live link inside the entry would hijack the
+            // click.
+            previewDeck.inert = true;
+            previewDeck.setAttribute("inert", "");
+            clone
+              .querySelectorAll("a[href]")
+              .forEach((link) => link.removeAttribute("href"));
+            previewDeck.appendChild(previewSlides);
+            frame.appendChild(previewDeck);
+          };
+
+          const unmount = () => {
+            if (frame.firstChild) frame.replaceChildren();
+          };
+
+          entry.tpMount = mount;
+          entry.tpUnmount = unmount;
 
           const caption = document.createElement("div");
           caption.className = "tp-caption";
@@ -428,6 +455,28 @@ window.RevealThumbnailPreview = function () {
           list.appendChild(entry);
           entries.push(entry);
         });
+
+        // Frames are always in the rail; their contents follow the scroll.
+        // The margin is the lead: 60% of the rail's height is about five
+        // entries above and below what is on screen, which is more than a
+        // drag or a keypress can outrun, and far less than the whole deck.
+        // A rail that is display:none has a zero-sized root, so a stowed rail
+        // holds no previews at all.
+        if (previewObserver) previewObserver.disconnect();
+        if (typeof IntersectionObserver === "function") {
+          previewObserver = new IntersectionObserver(
+            (records) => {
+              records.forEach((record) => {
+                if (record.isIntersecting) record.target.tpMount();
+                else record.target.tpUnmount();
+              });
+            },
+            { root: list, rootMargin: "60% 0px" }
+          );
+          entries.forEach((entry) => previewObserver.observe(entry));
+        } else {
+          entries.forEach((entry) => entry.tpMount());
+        }
 
         list.scrollTop = scrollTop;
         rescalePreviews();
