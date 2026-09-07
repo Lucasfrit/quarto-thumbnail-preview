@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.1
+
+- Canvas content appears in previews. `cloneNode` copies a `<canvas>` element
+  but not its bitmap, so anything a deck draws on canvas - a WebGL plot, a
+  chart library, a sketch - came out blank, which reads as a missing slide
+  rather than as a limitation. Each cloned canvas is now filled by blitting
+  its source, downscaled to about twice the frame's display width: the frame
+  is a couple of hundred pixels wide and a full-size copy would cost megabytes
+  of bitmap per preview for pixels nobody can see.
+- The blit is committed only if the result has content. A source caught
+  mid-redraw reads as empty, and adopting it would replace a good snapshot
+  with nothing; the stale image is kept and the next pass replaces it.
+- Snapshots follow a theme switch. An attribute change on the root element
+  (`class` or `data-theme`) re-takes the snapshots that are mounted, twice, a
+  second apart, since a deck repainting its own canvases in response to the
+  same change may not have finished when the first pass runs.
+
 ## 0.5.0
 
 - Previews are built when they come near the rail's viewport and thrown away

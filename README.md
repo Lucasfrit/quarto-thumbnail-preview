@@ -154,6 +154,13 @@ used only as a fallback when the window is too narrow to pin (see below).
   unmounts it when it leaves, which keeps about a dozen alive and the same deck
   at 0.25 s. Frames stay in place either way, so nothing moves and the scroll
   position is stable.
+- **Canvas content is blitted, not cloned.** `cloneNode` copies a `<canvas>`
+  element and not its bitmap, so a WebGL plot or any other canvas drawing is
+  blank in a clone. Each cloned canvas is filled from its source at about
+  twice the frame's display width, the result is only committed if it has
+  content (a source caught mid-redraw reads as empty), and an attribute change
+  on the root element re-takes the mounted snapshots so they follow a theme
+  switch. A tainted canvas is left blank rather than taking the rail down.
 - **A closed rail is `display: none`,** not translated off screen. Style
   invalidation is not skipped by `visibility`, `content-visibility` or
   `contain`; only `display: none` stops it. The class is applied after the

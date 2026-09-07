@@ -144,10 +144,13 @@ window.RevealThumbnailPreview = function () {
 
       // The frame width is CSS-driven (it clamps on narrow screens), so the
       // clone scale is measured rather than assumed.
-      const rescalePreviews = () => {
+      const frameWidth = () => {
         const frame = list.querySelector(".tp-frame");
-        if (!frame) return;
-        const width = frame.clientWidth;
+        return frame ? frame.clientWidth : 0;
+      };
+
+      const rescalePreviews = () => {
+        const width = frameWidth();
         if (width > 0) drawer.style.setProperty("--tp-scale", String(width / slideWidth));
       };
 
@@ -217,6 +220,69 @@ window.RevealThumbnailPreview = function () {
           return;
         }
         if (Number.isFinite(stored)) setDrawerWidth(stored);
+      };
+
+      // A cloned <canvas> is an empty one: cloneNode copies the element, not
+      // the bitmap. Anything a deck draws on canvas - a WebGL plot, a chart
+      // library, a sketch - is therefore blank in a preview, which is worse
+      // than useless because the blank looks like a missing slide.
+      //
+      // So each cloned canvas is filled by blitting its source, downscaled to
+      // roughly the size the thumbnail is actually displayed at. Low
+      // resolution is the point: the frame is a couple of hundred pixels
+      // wide, and a full-size copy would cost megabytes of bitmap per
+      // preview for pixels nobody can see.
+      const SNAPSHOT_PIXEL_RATIO = 2;
+
+      const snapshotCanvases = (clone, slide) => {
+        const sources = slide.querySelectorAll("canvas");
+        const targets = clone.querySelectorAll("canvas");
+        if (!sources.length || sources.length !== targets.length) return;
+
+        const displayWidth = Math.max(
+          64,
+          Math.round((frameWidth() || 190) * SNAPSHOT_PIXEL_RATIO)
+        );
+
+        targets.forEach((target, i) => {
+          const source = sources[i];
+          if (!source || !source.width || !source.height) return;
+          const scale = Math.min(1, displayWidth / source.width);
+          const width = Math.max(1, Math.round(source.width * scale));
+          const height = Math.max(1, Math.round(source.height * scale));
+
+          try {
+            // Draw into a scratch canvas first and look at it before
+            // committing. A source caught mid-redraw - a deck repainting its
+            // figures for a theme change, a plot being resized - reads as
+            // empty, and setting target.width to adopt it would throw away a
+            // good snapshot in favour of nothing. Better to keep the stale
+            // image and let the next pass replace it.
+            const scratch = document.createElement("canvas");
+            scratch.width = width;
+            scratch.height = height;
+            const scratchCtx = scratch.getContext("2d");
+            if (!scratchCtx) return;
+            scratchCtx.drawImage(source, 0, 0, width, height);
+
+            let ink = 0;
+            const pixels = scratchCtx.getImageData(0, 0, width, height).data;
+            for (let p = 3; p < pixels.length; p += 4) {
+              if (pixels[p] !== 0 && ++ink > 50) break;
+            }
+            if (ink <= 50 && target.dataset.tpSnapshot === "yes") return;
+
+            target.width = width;
+            target.height = height;
+            const ctx = target.getContext("2d");
+            if (!ctx) return;
+            ctx.drawImage(scratch, 0, 0);
+            if (ink > 50) target.dataset.tpSnapshot = "yes";
+          } catch (e) {
+            // A tainted canvas cannot be read. Leave the blank rather than
+            // taking the whole rail down with it.
+          }
+        });
       };
 
       // Long enough for the slide-out transition to finish; the rail is only
@@ -419,6 +485,10 @@ window.RevealThumbnailPreview = function () {
               .forEach((link) => link.removeAttribute("href"));
             previewDeck.appendChild(previewSlides);
             frame.appendChild(previewDeck);
+
+            // After insertion: the clone's canvases exist by now, and the
+            // source has been laid out at its real size.
+            snapshotCanvases(clone, slide);
           };
 
           const unmount = () => {
@@ -482,6 +552,36 @@ window.RevealThumbnailPreview = function () {
         rescalePreviews();
         updateActive();
       };
+
+      // A deck with a light/dark switch repaints its canvases in place, and a
+      // snapshot taken before that keeps the old colours. Watch the root for
+      // the attribute changes such a switch makes and re-take the snapshots
+      // that are currently mounted. Coalesced, because a switch usually
+      // rewrites several attributes at once.
+      let refreshTimers = [];
+      const refreshSnapshots = () => {
+        refreshTimers.forEach(window.clearTimeout);
+        const take = () => {
+          const slides = deck.getSlides();
+          entries.forEach((entry, i) => {
+            const clone = entry.querySelector(".tp-slide-clone");
+            if (clone && slides[i]) snapshotCanvases(clone, slides[i]);
+          });
+        };
+        // Twice: a deck that repaints its own canvases in response to the
+        // same attribute change may not have finished when the first pass
+        // runs, and a blit is cheap enough that trying again beats guessing
+        // how long that takes.
+        refreshTimers = [
+          window.setTimeout(take, 300),
+          window.setTimeout(take, 1200),
+        ];
+      };
+
+      new MutationObserver(refreshSnapshots).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class", "data-theme"],
+      });
 
       toggle.addEventListener("click", showSidebar);
       closeButton.addEventListener("click", hideSidebar);
