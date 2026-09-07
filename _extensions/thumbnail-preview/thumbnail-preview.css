@@ -52,6 +52,13 @@ body {
   flex-direction: column;
 }
 
+/* Out of the document once it has slid away - see the note in applyLayout:
+   the previews are live slide clones, so leaving them in the flow makes every
+   Reveal navigation recalculate style across all of them. */
+.tp-drawer.is-stowed {
+  display: none;
+}
+
 .tp-drawer.is-open,
 .tp-drawer.is-pinned {
   transform: translateX(0);

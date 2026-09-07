@@ -217,6 +217,11 @@ window.RevealThumbnailPreview = function () {
         if (Number.isFinite(stored)) setDrawerWidth(stored);
       };
 
+      // Long enough for the slide-out transition to finish; the rail is only
+      // taken out of the flow once it is off screen anyway.
+      const STOW_DELAY_MS = 400;
+      let hideTimer = 0;
+
       const applyLayout = () => {
         const pinned = mode === "pinned" && pinFits();
         const open = pinned || overlayOpen;
@@ -226,6 +231,30 @@ window.RevealThumbnailPreview = function () {
         drawer.classList.toggle("is-pinned", pinned);
         drawer.classList.toggle("is-open", open);
         drawer.setAttribute("aria-hidden", open ? "false" : "true");
+
+        // A closed rail leaves the layout entirely, after its slide-out has
+        // finished. It is not enough to translate it off screen: the previews
+        // are clones of real slides, so each one contains a .reveal and a
+        // <section>, and every Reveal rule that keys on those matches inside
+        // them. Reveal changes classes on the deck root on every navigation,
+        // and the browser then recalculates style for all of it - measured at
+        // 0.4-0.5 s of blocked main thread per slide change on a 38-slide
+        // deck, against 0.07 s with the rail out of the document flow. Style
+        // invalidation is not skipped by visibility, content-visibility or
+        // containment; only display:none stops it.
+        window.clearTimeout(hideTimer);
+        if (open) {
+          drawer.classList.remove("is-stowed");
+          // Force the style change to land before the transition starts, or
+          // the rail appears in place instead of sliding in.
+          void drawer.offsetWidth;
+        } else {
+          hideTimer = window.setTimeout(() => {
+            if (!drawer.classList.contains("is-open")) {
+              drawer.classList.add("is-stowed");
+            }
+          }, STOW_DELAY_MS);
+        }
         toggle.classList.toggle("is-hidden", open);
         closeButton.hidden = pinned;
 
