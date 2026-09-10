@@ -1,0 +1,145 @@
+/*
+ * RevealThemeToggle styling.
+ *
+ * Two independent parts:
+ *
+ *   1. `.deck-theme-toggle` - the floating button. Always styled, because the
+ *      plugin is what puts it on the page.
+ *   2. `.theme-toggle-slides[data-theme="dark"]` - Reveal's own surfaces in
+ *      dark. Only applied when `styleSlides` is left on, so a deck that
+ *      answers [data-theme="dark"] in its own CSS is not fighting this file
+ *      over the same properties.
+ *
+ * The variables below are the seam between the two. A deck that keeps
+ * `styleSlides` on but wants different colours redefines them; a deck that
+ * turns it off still gets a button that matches, because the button reads the
+ * same variables.
+ */
+
+:root {
+  --deck-theme-bg: #ffffff;
+  --deck-theme-fg: #262626;
+  --deck-theme-muted: #666666;
+  --deck-theme-rule: #d9d9d9;
+  --deck-theme-panel: #ffffff;
+  --deck-theme-accent: #1f77b4;
+  --deck-theme-code-bg: #f5f5f5;
+}
+
+:root[data-theme="dark"] {
+  /* A dark deck needs *dimmer* furniture than a light one, not inverted
+     furniture: the eye reads contrast against the background, and inverting
+     a #d9d9d9 rule gives a line that shouts over the content. */
+  --deck-theme-bg: #111418;
+  --deck-theme-fg: #e6e6e6;
+  --deck-theme-muted: #8a94a6;
+  --deck-theme-rule: #333a44;
+  --deck-theme-panel: #171b21;
+  --deck-theme-accent: #6ab0f3;
+  --deck-theme-code-bg: #1b2029;
+}
+
+/* ---- The button ------------------------------------------------------- */
+
+.deck-theme-toggle {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  z-index: 40;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 24px;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--deck-muted, var(--deck-theme-muted));
+  background: var(--deck-panel, var(--deck-theme-panel));
+  border: 1px solid var(--deck-rule, var(--deck-theme-rule));
+  border-radius: 50%;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.deck-theme-toggle:hover { opacity: 1; }
+
+.deck-theme-toggle:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--deck-accent, var(--deck-theme-accent));
+  outline-offset: 2px;
+}
+
+/* The rail insets the deck from the left; the button sits bottom-right and
+   so never collides with it. Printing drops the button entirely - the plugin
+   does not even create one under print-pdf, and this covers a deck printed
+   straight from the browser. */
+@media print { .deck-theme-toggle { display: none; } }
+
+/* ---- Reveal's surfaces in dark ---------------------------------------- */
+
+.theme-toggle-slides[data-theme="dark"] body,
+.theme-toggle-slides[data-theme="dark"] .reveal-viewport,
+.theme-toggle-slides[data-theme="dark"] .reveal {
+  background: var(--deck-theme-bg);
+  color: var(--deck-theme-fg);
+}
+
+.theme-toggle-slides[data-theme="dark"] .reveal h1,
+.theme-toggle-slides[data-theme="dark"] .reveal h2,
+.theme-toggle-slides[data-theme="dark"] .reveal h3,
+.theme-toggle-slides[data-theme="dark"] .reveal h4,
+.theme-toggle-slides[data-theme="dark"] .reveal h5,
+.theme-toggle-slides[data-theme="dark"] .reveal h6 {
+  color: var(--deck-theme-fg);
+}
+
+.theme-toggle-slides[data-theme="dark"] .reveal a { color: var(--deck-theme-accent); }
+
+.theme-toggle-slides[data-theme="dark"] .reveal blockquote,
+.theme-toggle-slides[data-theme="dark"] .reveal .footer,
+.theme-toggle-slides[data-theme="dark"] .reveal .slide-number {
+  color: var(--deck-theme-muted);
+  background: transparent;
+}
+
+/* Code keeps its own syntax colours - those are chosen for contrast already
+   and re-tinting them here would undo that. Only the slab behind them moves. */
+.theme-toggle-slides[data-theme="dark"] .reveal pre,
+.theme-toggle-slides[data-theme="dark"] .reveal code,
+.theme-toggle-slides[data-theme="dark"] .reveal pre code,
+.theme-toggle-slides[data-theme="dark"] .reveal div.sourceCode {
+  background: var(--deck-theme-code-bg);
+  color: var(--deck-theme-fg);
+}
+
+.theme-toggle-slides[data-theme="dark"] .reveal table th,
+.theme-toggle-slides[data-theme="dark"] .reveal table td {
+  border-color: var(--deck-theme-rule);
+  color: var(--deck-theme-fg);
+}
+
+.theme-toggle-slides[data-theme="dark"] .reveal .controls {
+  color: var(--deck-theme-muted);
+}
+
+.theme-toggle-slides[data-theme="dark"] .reveal .progress {
+  background: var(--deck-theme-rule);
+  color: var(--deck-theme-accent);
+}
+
+/* Quarto's callouts and code-fold summary carry their own light backgrounds. */
+.theme-toggle-slides[data-theme="dark"] .reveal .callout,
+.theme-toggle-slides[data-theme="dark"] .reveal .callout-body,
+.theme-toggle-slides[data-theme="dark"] .reveal details > summary {
+  background: var(--deck-theme-panel);
+  color: var(--deck-theme-fg);
+  border-color: var(--deck-theme-rule);
+}
+
+/* A raster image is the one thing that must not be re-tinted: a photograph of
+   the rig is not furniture. Line art on a white canvas, though, becomes a
+   white card on a dark slide - a deck marks those with .theme-invert and gets
+   a luminance flip that leaves hues alone. */
+.theme-toggle-slides[data-theme="dark"] .reveal img.theme-invert {
+  filter: invert(1) hue-rotate(180deg);
+}

@@ -176,8 +176,14 @@ body {
   width: var(--tp-preview-width);
   aspect-ratio: var(--tp-slide-aspect);
   overflow: hidden;
-  background: white;
-  color: #111;
+  /* A thumbnail is a clone of the real slide, so its card has to be the
+     colour that slide is - a dark deck cloned onto a white card is light
+     text on white, which is no preview at all. The variables are set by
+     whatever puts `data-theme` on <html> (the theme-toggle extension, or a
+     deck's own switch); with no such attribute these fall back to the light
+     card this always drew, so the rail still works on its own. */
+  background: var(--tp-frame-bg, white);
+  color: var(--tp-frame-fg, #111);
   border-radius: 4px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
   pointer-events: none;
@@ -399,4 +405,14 @@ body.tp-resizing .tp-drawer {
   .tp-toggle {
     transition: none;
   }
+}
+
+/* Dark decks. The rail's own chrome is dark in both themes by design - it is
+   furniture beside the slide, not part of it - so only the preview card
+   moves. Scoped to the attribute rather than prefers-color-scheme so that a
+   deliberate override switches the rail with the deck instead of leaving it
+   on the system setting. */
+:root[data-theme="dark"] {
+  --tp-frame-bg: #111418;
+  --tp-frame-fg: #e6e6e6;
 }

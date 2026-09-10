@@ -45,6 +45,66 @@ To try the bundled example:
 cd example && quarto preview demo.qmd
 ```
 
+## Dark mode
+
+The repository carries a second, independent extension: **`theme-toggle`**,
+light and dark for the deck itself. Quarto has no light/dark switch for reveal
+decks — the one in its documentation is a website feature — so a deck that
+wants one has to carry it.
+
+```yaml
+---
+format: revealjs
+revealjs-plugins:
+  - thumbnail-preview
+  - theme-toggle
+theme-toggle:
+  default: system      # or "light" / "dark" to pin the starting mode
+  shortcut: D          # Shift+D
+---
+```
+
+It follows `prefers-color-scheme`, puts a ☀/☾ button in the bottom-right
+corner, and remembers a deliberate choice so a deck reopened for a talk comes
+back the way it was left. Double-click the button to go back to following the
+system. PDF export is always light: printing wants ink on paper.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `default` | `system` | Starting mode before anyone chooses. A remembered choice wins over it. |
+| `shortcut` | `D` | Pressed with Shift. Set to `false` for no shortcut. |
+| `showButton` | `true` | Off when the deck puts its own control in the chrome. |
+| `styleSlides` | `true` | Paint Reveal's own surfaces when dark. Off when the deck's CSS answers `[data-theme="dark"]` itself. |
+| `remember` | `true` | Off for a kiosk that should come up the same way every morning. |
+| `storageKey` | `quarto-deck-theme` | Where the choice is remembered. |
+
+The two extensions know about each other in exactly one place: a thumbnail is
+a clone of the real slide, so its card follows `data-theme` too. A dark deck
+cloned onto a white card is light text on white, which is no preview at all.
+Used without `theme-toggle`, the rail draws the light card it always did.
+
+### Colours the plugin cannot reach
+
+`theme-toggle` owns the *state* and the *chrome*. Anything whose colours do not
+live in CSS is the deck's own business — a Plotly figure keeps its palette in
+the figure's layout, and no stylesheet reaches it. Register a callback and
+repaint:
+
+```js
+RevealThemeToggle.onChange(function (mode) {
+  repaintMyFigures(mode);   // also called once, immediately
+});
+```
+
+`onChange` fires immediately with the current mode, so a deck that registers
+late still paints correctly instead of waiting for the first switch, and it
+fires only on a real change — following the system while already in the
+system's mode is not one, and a needless repaint of a figure-heavy deck costs
+most of a second of blocked main thread.
+
+Also available: `RevealThemeToggle.mode()`, `.isOverridden()`, `.set(mode)`,
+`.toggle()` and `.follow()`.
+
 ## Configuration
 
 Options go at the **top level** of the document YAML, under the **kebab-case**

@@ -1,0 +1,30 @@
+title: Theme Toggle
+author: Lucasfrit
+version: 0.1.0
+quarto-required: ">=1.2.0"
+contributes:
+  revealjs-plugins:
+    - name: RevealThemeToggle
+      script:
+        - theme-toggle.js
+      stylesheet:
+        - theme-toggle.css
+      config:
+        themeToggle:
+          # Where the deck starts before anyone touches it. "system" follows
+          # prefers-color-scheme; "light" and "dark" pin it until the viewer
+          # switches. A remembered choice always wins over this.
+          default: system
+          shortcut: D
+          # The floating ☀/☾ button. A deck that puts its own control in the
+          # chrome turns this off and drives the plugin through its API.
+          showButton: true
+          # Paint Reveal's own surfaces - background, text, links, code, the
+          # controls - when dark. A deck whose CSS already answers
+          # [data-theme="dark"] itself sets this false, so the two do not
+          # fight over the same properties.
+          styleSlides: true
+          # Remembering a choice is right for a deck reopened for a talk, and
+          # wrong for a kiosk that should come up the same way every morning.
+          remember: true
+          storageKey: quarto-deck-theme

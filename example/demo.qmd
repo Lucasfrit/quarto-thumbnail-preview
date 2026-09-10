@@ -12,11 +12,15 @@ format:
     height: 700
 revealjs-plugins:
   - thumbnail-preview
+  - theme-toggle
 thumbnail-preview:
   mode: pinned
   drawerWidth: 280
   shortcut: p
   allowModeToggle: true
+theme-toggle:
+  default: system
+  shortcut: D
 ---
 
 ## Pinned thumbnail sidebar
