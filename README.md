@@ -105,6 +105,62 @@ most of a second of blocked main thread.
 Also available: `RevealThemeToggle.mode()`, `.isOverridden()`, `.set(mode)`,
 `.toggle()` and `.follow()`.
 
+## Plot slides
+
+A third extension, **`plot-slides`**, for decks built around figures and the
+calculations behind them.
+
+```yaml
+revealjs-plugins:
+  - thumbnail-preview
+  - theme-toggle
+  - plot-slides
+```
+
+It gives you two slide shapes and fixes the two things Plotly needs inside a
+reveal deck.
+
+**`.plot-slide`** — the figure *is* the slide. Title on one line, figure
+fills the rest.
+
+```markdown
+## Damped free decay {.plot-slide}
+```
+
+**`.calc-slide`** — the derivation that produced it: equations and a table of
+values, densely set, because here they are the content rather than an aside.
+(Quarto's own `.smaller` is matched too, so a deck already using that keeps
+working.) Used as a pair — the calculation, then the picture — so a reader can
+check a number without the figure slide carrying a wall of text.
+
+**Sizing, which is what makes zoom usable.** Reveal keeps every slide in the
+DOM but lays out only the current one, so a figure first drawn off screen
+measures a container with no usable width and keeps Plotly's 700px default
+inside a full-width div — and nothing then tells it the container changed. A
+figure that is not the size of its slide is one you cannot zoom into usefully,
+because the drag-to-zoom region is the wrong shape. The plugin resizes the
+visible figures on every slide change, and only the visible ones: on a large
+deck, resizing all of them each time is most of a second of blocked main
+thread per slide.
+
+**Theme.** Plotly keeps its colours in the figure's layout, where no
+stylesheet reaches them, so CSS alone cannot make a figure dark. The plugin
+repaints backgrounds, fonts, gridlines, axes, hover labels, the legend, the
+modebar and boxed annotations. It drives this off `RevealThemeToggle.onChange`
+when `theme-toggle` is present, and otherwise watches the `data-theme`
+attribute directly, so a deck with its own switch works too.
+
+A figure whose colours carry meaning opts out:
+
+```python
+fig.update_layout(meta={"themeRepaint": False})
+```
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `resize` | `true` | Keep figures sized to their slide. |
+| `theme` | `true` | Repaint figures when the theme changes. |
+
 ## Configuration
 
 Options go at the **top level** of the document YAML, under the **kebab-case**

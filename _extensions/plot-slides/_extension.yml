@@ -1,0 +1,23 @@
+title: Plot Slides
+author: Lucasfrit
+version: 0.1.0
+quarto-required: ">=1.2.0"
+contributes:
+  revealjs-plugins:
+    - name: RevealPlotSlides
+      script:
+        - plot-slides.js
+      stylesheet:
+        - plot-slides.css
+      config:
+        plotSlides:
+          # Keep figures sized to their slide. Reveal keeps every slide in the
+          # DOM but lays out only the current one, so a figure first drawn off
+          # screen keeps Plotly's 700px default for the rest of the talk.
+          resize: true
+          # Repaint Plotly figures when the theme changes. Plotly keeps its
+          # colours in the figure's layout, where no stylesheet reaches them,
+          # so CSS alone cannot make a figure dark. Needs the theme-toggle
+          # extension, or anything else that sets data-theme and exposes
+          # RevealThemeToggle.onChange.
+          theme: true

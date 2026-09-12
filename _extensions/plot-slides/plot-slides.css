@@ -1,0 +1,101 @@
+/*
+ * RevealPlotSlides styling: two slide shapes that a deck built around figures
+ * and their derivations keeps needing.
+ *
+ *   .plot-slide  the figure IS the slide. Title on one line, figure fills the
+ *                rest. Nothing else competes for the space, and the figure is
+ *                big enough that Plotly's drag-to-zoom selects something
+ *                meaningful rather than a few pixels.
+ *
+ *   .calc-slide  the derivation behind it: equations and a table of values,
+ *                dense, because on this slide they are the content rather
+ *                than an aside. (Quarto's own `.smaller` is also matched, so
+ *                a deck already using that keeps working.)
+ *
+ * Used as a pair - the calculation, then the picture it produces - so a
+ * reader can check a number without the figure slide carrying a wall of text.
+ */
+
+/* ---- the figure is the slide ------------------------------------------ */
+
+.reveal .slides section.plot-slide {
+  padding: 0;
+  height: 100%;
+}
+
+/* Kept small so the title costs one line rather than a heading block. */
+.reveal .slides section.plot-slide > h2 {
+  font-size: 0.72em;
+  margin: 0 0 0.15em 0.3em;
+  text-align: left;
+  color: inherit;
+}
+
+.reveal .slides section.plot-slide .cell,
+.reveal .slides section.plot-slide .cell-output,
+.reveal .slides section.plot-slide .plotly-graph-div {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+
+.reveal .plot-caption {
+  font-size: 0.44em;
+  text-align: left;
+  margin-top: -0.4em;
+  opacity: 0.75;
+}
+
+/* ---- the derivation beside it ----------------------------------------- */
+
+/* Tables and display maths carry the content here, so they get the space
+   that generous default spacing would otherwise take. */
+.reveal .slides section.calc-slide table,
+.reveal .slides section.smaller table {
+  font-size: 0.62em;
+  margin: 0.25em 0;
+}
+
+.reveal .slides section.calc-slide h2,
+.reveal .slides section.smaller h2 {
+  margin-bottom: 0.25em;
+}
+
+/* MathJax will not wrap an equation, so an over-wide one is simply clipped.
+   Scale it down instead, and keep each equation short enough that this is
+   enough. */
+.reveal .slides section.calc-slide .math.display,
+.reveal .slides section.calc-slide .MathJax_Display,
+.reveal .slides section.smaller .math.display,
+.reveal .slides section.smaller .MathJax_Display {
+  font-size: 0.72em;
+  margin: 0.25em 0;
+}
+
+/* Quarto sizes each column with an explicit width percentage, so any padding
+   has to live inside that box or the pair wraps onto two rows. */
+.reveal .slides section.calc-slide .columns > .column,
+.reveal .slides section.smaller .columns > .column {
+  box-sizing: border-box;
+  padding-right: 0.8em;
+}
+.reveal .slides section.calc-slide .columns > .column:last-child,
+.reveal .slides section.smaller .columns > .column:last-child {
+  padding-right: 0;
+}
+
+/* ---- dark ------------------------------------------------------------- */
+
+/* Plotly's modebar - the zoom, pan and reset controls - is drawn as SVG with
+   its own colours, and the JS half repaints only what lives in the figure's
+   layout. These are the bits that do not. */
+:root[data-theme="dark"] .reveal .modebar {
+  background: transparent !important;
+}
+:root[data-theme="dark"] .reveal .modebar-btn path {
+  fill: #8a94a6 !important;
+}
+:root[data-theme="dark"] .reveal .modebar-btn:hover path,
+:root[data-theme="dark"] .reveal .modebar-btn.active path {
+  fill: #e6e6e6 !important;
+}
