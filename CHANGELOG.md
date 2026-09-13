@@ -1,6 +1,62 @@
 # Changelog
 
-## 0.5.1
+This repository carries three independent extensions, each versioned on its
+own in its `_extension.yml`. Entries below say which one they belong to.
+
+| Extension | Version |
+|---|---|
+| `thumbnail-preview` | 0.6.0 |
+| `theme-toggle` | 0.1.0 |
+| `plot-slides` | 0.1.0 |
+
+## plot-slides 0.1.0
+
+- New extension. Two slide shapes for decks built around figures:
+  `.plot-slide`, where the figure is the slide, and `.calc-slide`, the dense
+  equations-and-table slide that precedes it. Quarto's `.smaller` is matched
+  too, so an existing deck keeps working.
+- Plotly figures are resized to their slide on every slide change, and only
+  the visible ones. Reveal lays out only the current slide, so a figure first
+  drawn off screen keeps Plotly's 700px default - and a figure the wrong size
+  for its slide cannot be zoomed into usefully.
+- Plotly figures follow the theme. Their colours live in the figure layout,
+  where no stylesheet reaches, so the plugin repaints backgrounds, text,
+  gridlines, axes, hover labels, legend, modebar and boxed annotations. Driven
+  by `RevealThemeToggle.onChange` when `theme-toggle` is present, and by the
+  `data-theme` attribute otherwise.
+- A figure whose colours carry meaning opts out with
+  `layout.meta.themeRepaint = false`.
+- Handles both ways a deck gets Plotly: `window.Plotly`, and the AMD module
+  Quarto's own renderer defines, where `window.Plotly` is never set.
+
+## theme-toggle 0.1.0
+
+- New extension. Light and dark for a reveal deck, following
+  `prefers-color-scheme` by default, with a corner button and `Shift+D`.
+- A deliberate choice is remembered; double-clicking the button returns to
+  following the system. PDF export is always light.
+- Sets `data-theme` on `<html>` before first paint, so a deck's own
+  `[data-theme="dark"]` rules match immediately rather than a frame late.
+- `RevealThemeToggle.onChange(fn)` for colours CSS cannot reach. It fires once
+  on registration, so a late subscriber still paints, and only on a real
+  change - following the system while already in the system's mode is not
+  one, and a needless repaint of a figure-heavy deck is most of a second of
+  blocked main thread.
+- Options: `default`, `shortcut`, `showButton`, `styleSlides`, `remember`,
+  `storageKey`.
+
+## thumbnail-preview 0.6.0
+
+- Previews follow a dark deck. `.tp-frame` drew a hard-coded white card, so a
+  clone of a dark slide was light text on white - no preview at all. The card
+  now reads `--tp-frame-bg` / `--tp-frame-fg`, set under
+  `[data-theme="dark"]` and defaulting to the old white, so the rail used on
+  its own is unchanged.
+- `_extension.yml` now carries the real version. It had stayed at 0.4.0
+  through 0.4.1, 0.5.0 and 0.5.1, so `quarto add` reported the wrong version
+  and `quarto update` compared against it.
+
+## thumbnail-preview 0.5.1
 
 - Canvas content appears in previews. `cloneNode` copies a `<canvas>` element
   but not its bitmap, so anything a deck draws on canvas - a WebGL plot, a
@@ -17,7 +73,7 @@
   second apart, since a deck repainting its own canvases in response to the
   same change may not have finished when the first pass runs.
 
-## 0.5.0
+## thumbnail-preview 0.5.0
 
 - Previews are built when they come near the rail's viewport and thrown away
   when they leave it. A preview is a copy of a whole slide, so it carries its
@@ -33,7 +89,7 @@
   not skipped by `visibility`, `content-visibility` or `contain`; only
   `display: none` stops it, so a hidden rail now costs nothing at all.
 
-## 0.4.1
+## thumbnail-preview 0.4.1
 
 - Thumbnail captions no longer repeat a heading's maths. Every maths renderer
   leaves several representations of one formula in the DOM, and `textContent`
@@ -46,7 +102,7 @@
 - `example.qmd` has a slide whose heading contains maths, so the demo deck
   exercises this.
 
-## 0.4.0
+## thumbnail-preview 0.4.0
 
 - Resizable rail: drag its right edge, double-click to reset, or use the arrow
   keys while the handle is focused. The chosen width persists per document in
@@ -59,7 +115,7 @@
   cloned deck is `inert` so nothing inside it is focusable or clickable.
 - New options: `allowResize`, `minDrawerWidth`, `accentColor`.
 
-## 0.3.0
+## thumbnail-preview 0.3.0
 
 - Options are read from a top-level, kebab-cased `thumbnail-preview` document
   key, declared in `_extension.yml`. Quarto drops plugin options it was not
@@ -81,7 +137,7 @@
 - Disabled for `?print-pdf`, and stands down for Reveal's scroll and print
   views.
 
-## 0.1.1
+## thumbnail-preview 0.1.1
 
 - Initial prototype: overlay drawer of DOM-cloned slide previews.
 
