@@ -1,9 +1,16 @@
 # quarto-thumbnail-preview
 
-A Reveal.js plugin for [Quarto](https://quarto.org) that puts a sidebar of real
-DOM-cloned slide previews beside your deck. In **pinned** mode the sidebar takes
-real screen width and the deck rescales into what is left, so the slide starts
-where the rail ends instead of sitting underneath it.
+Three [Quarto](https://quarto.org) Reveal.js extensions for decks built around
+figures, usable together or one at a time:
+
+| Extension | What it does |
+|---|---|
+| **`thumbnail-preview`** | A sidebar of real DOM-cloned slide previews that takes real screen width, so the deck rescales beside it instead of sitting underneath |
+| **`theme-toggle`** | Light and dark, following the system, with a corner button and `Shift+D` |
+| **`plot-slides`** | Full-slide Plotly figures that stay sized to their slide and follow the theme, plus a calculation-slide layout to pair with them |
+
+None of them needs Python. `plot-slides` is only useful if your deck has
+Plotly figures, however you make them.
 
 ```
 ┌──────────────┬──────────────────────────────────┐
@@ -27,17 +34,20 @@ up your theme, code highlighting, columns and typeset equations.
 quarto add Lucasfrit/quarto-thumbnail-preview
 ```
 
-Then in your document:
+This installs all three into `_extensions/`. Then list the ones you want:
 
 ```yaml
 ---
 format: revealjs
 revealjs-plugins:
-  - thumbnail-preview
+  - thumbnail-preview     # the rail
+  - theme-toggle          # optional: light and dark
+  - plot-slides           # optional: if the deck has Plotly figures
 ---
 ```
 
-That is enough — it starts pinned with sensible defaults.
+That is enough - each starts with sensible defaults, and an extension you
+do not list is installed but never loaded.
 
 ## Try the examples
 
