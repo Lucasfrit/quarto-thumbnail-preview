@@ -1,0 +1,131 @@
+---
+title: "Plot Slides Demo"
+subtitle: "Quarto + Reveal.js · a Plotly figure, rendered from Python"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    progress: false
+    transition: none
+    background-transition: none
+    width: 1050
+    height: 700
+    # Inline every library, the way a real deck does: the default renderer
+    # points requirejs at cdn.plot.ly, and a deck that needs the internet to
+    # draw anything fails in the room rather than at build time.
+    embed-resources: true
+revealjs-plugins:
+  - thumbnail-preview
+  - theme-toggle
+  - plot-slides
+thumbnail-preview:
+  mode: pinned
+  drawerWidth: 280
+  shortcut: p
+  allowModeToggle: true
+theme-toggle:
+  default: system
+  shortcut: D
+plot-slides:
+  resize: true
+  theme: true
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+```{python}
+# | echo: false
+# The "notebook" renderer defines the AMD module locally, so the figure works
+# with no network. "notebook_connected" - the default - points requirejs at
+# cdn.plot.ly instead, and requirejs gives up after 7 s.
+import plotly.io as pio
+pio.renderers.default = "notebook"
+
+PLOTLY_CONFIG = {"displaylogo": False, "responsive": True}
+```
+
+## What this deck shows
+
+- **`.calc-slide`** - the derivation: equations and the values they use
+- **`.plot-slide`** - the figure it produces, filling the slide
+- The figure stays sized to its slide, so drag-to-zoom selects what you mean
+- `Shift+D` switches the theme, and the figure repaints with it
+
+Needs `jupyter`, `numpy` and `plotly`. The rail and theme toggle on their own
+need none of that - see `demo.qmd`.
+
+## Damped natural frequency {.calc-slide}
+
+The calculation slide carries the derivation; the figure gets its own slide
+after it, so neither has to make room for the other.
+
+::: {.columns}
+::: {.column width="52%"}
+
+$$\omega_d = \omega_n\sqrt{1-\zeta^2} \tag{1}$$
+
+$$x(t) = A e^{-\zeta\omega_n t}\sin(\omega_d t + \phi) \tag{2}$$
+
+:::
+::: {.column width="48%"}
+
+| Symbol | Value | Unit |
+|---|---:|---|
+| $\omega_n$ | 12.0 | rad/s |
+| $\zeta$ | 0.08 | – |
+| $\omega_d$ | 11.96 | rad/s |
+| $A$ | 1.0 | mm |
+
+:::
+:::
+
+Equation (2) is what the next slide draws. Values above are the ones it uses,
+so a number on the figure can be checked without leaving the deck.
+
+::: {.notes}
+Say what the calculation establishes, then move on - the figure is the point.
+:::
+
+## Damped free decay {.plot-slide}
+
+```{python}
+import numpy as np
+import plotly.graph_objects as go
+
+wn, zeta, A = 12.0, 0.08, 1.0
+wd = wn * np.sqrt(1 - zeta**2)
+t = np.linspace(0, 3, 601)
+envelope = A * np.exp(-zeta * wn * t)
+
+fig = go.Figure()
+fig.add_scatter(x=t, y=envelope * np.sin(wd * t), mode="lines",
+                name="x(t)", line=dict(width=2))
+fig.add_scatter(x=t, y=envelope, mode="lines", name="envelope",
+                line=dict(width=1, dash="dot"))
+fig.update_layout(
+    margin=dict(l=60, r=20, t=10, b=45),
+    xaxis_title="Time, s",
+    yaxis_title="Displacement, mm",
+    legend=dict(orientation="h", y=1.08),
+    height=560,
+)
+fig.show(config=PLOTLY_CONFIG)
+```
+
+
+::: {.plot-caption}
+Drag a box on the figure to zoom; double-click to reset. The figure is sized
+to the slide on every slide change, so the zoom region is the shape you see.
+:::
+
+::: {.notes}
+This is the pair: calculation, then picture. Switch the theme with Shift+D and
+the figure repaints - Plotly keeps its colours in the layout, not in CSS.
+:::
+
+## That is the pair
+
+A calculation slide, then the picture it produces. A number on the figure can
+be checked against the table without the figure slide carrying a wall of text.

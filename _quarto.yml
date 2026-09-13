@@ -2,7 +2,14 @@
 # `quarto render example/demo.qmd` finds `_extensions/thumbnail-preview`.
 # Without this, Quarto looks for `_extensions` beside the .qmd itself and the
 # demo fails with "Specified Reveal plugin directory does not exist".
+#
+# Every demo must be listed here for the same reason: a .qmd that is not in
+# the render list is treated as outside the project, and fails exactly that
+# way. Rendering one named file renders only that file, so demo.qmd still
+# needs no Python even though demo-plots.qmd is listed beside it; a bare
+# `quarto render` at the root renders both, and so does need Python.
 project:
   type: default
   render:
     - example/demo.qmd
+    - example/demo-plots.qmd

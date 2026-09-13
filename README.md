@@ -39,11 +39,16 @@ revealjs-plugins:
 
 That is enough — it starts pinned with sensible defaults.
 
-To try the bundled example:
+## Try the examples
 
 ```bash
-cd example && quarto preview demo.qmd
+quarto preview example/demo.qmd          # rail and theme toggle - no Python
+quarto preview example/demo-plots.qmd    # adds a Plotly figure - needs Python
 ```
+
+`demo-plots.qmd` renders its figure from Python with `embed-resources: true`,
+the way a real figure deck does, so it needs `jupyter`, `numpy` and `plotly`.
+`demo.qmd` needs nothing but Quarto.
 
 ## Dark mode
 
