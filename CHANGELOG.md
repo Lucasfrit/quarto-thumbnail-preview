@@ -1,6 +1,6 @@
 # Changelog
 
-This repository carries three independent extensions, each versioned on its
+This repository carries four independent extensions, each versioned on its
 own in its `_extension.yml`. Entries below say which one they belong to.
 
 | Extension | Version |
@@ -8,6 +8,29 @@ own in its `_extension.yml`. Entries below say which one they belong to.
 | `thumbnail-preview` | 0.6.0 |
 | `theme-toggle` | 0.1.0 |
 | `plot-slides` | 0.1.0 |
+| `plot-explorer` | 0.1.0 |
+
+## plot-explorer 0.1.0
+
+- New extension. A dropdown, a slider and toggles for any Plotly figure, built
+  in the browser from `trace.meta` (`set`, `step`, `group`) and
+  `layout.meta.explorer`, so it needs no helper library and works for figures
+  made in Python, R or plain JavaScript.
+- The controls share one state - what is shown is the intersection of all of
+  them - where Plotly's own dropdowns and sliders reset each other.
+- Every dropdown entry draws when chosen; a group the selection lacks has its
+  toggle disabled with the reason on hover; an entry missing a slider position
+  snaps to the nearest one and says so, and the console warns about the gap.
+  A box unticked by the reader is never re-ticked.
+- Zoom for long signals: samples in `meta.zoom` (float32, float64, or int16 /
+  uint16 with scale and offset), drawn as one min/max pair per pixel column for
+  whatever is on screen and as every sample once few enough are visible. No
+  peak is lost zoomed out, and the readout says which view is showing.
+- Controls are scoped to the figure's own slide, so thumbnail clones never
+  steal them; keys used on a control do not also turn the slide; the bar
+  follows `theme-toggle`'s colours.
+- `RevealPlotExplorer.refresh()` wires figures drawn after the deck loaded.
+- `example/demo-explorer.qmd`, on synthetic data only.
 
 ## plot-slides 0.1.0
 

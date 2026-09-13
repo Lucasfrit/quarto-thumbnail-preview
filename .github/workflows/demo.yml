@@ -7,7 +7,7 @@ name: Render demos
 # Each check is a promise the README makes:
 #   - demo.qmd needs nothing but Quarto        -> rendered with Python unusable
 #   - demo-plots.qmd renders from Python        -> rendered with plotly >= 5.18
-#   - `quarto add` installs all three and each
+#   - `quarto add` installs all four and each
 #     works in a deck that lists only it        -> a fresh project, no Python
 #   - every rendered demo actually loads its
 #     plugins, rather than rendering without     -> grep for each plugin
@@ -56,6 +56,9 @@ jobs:
       - name: demo-plots.qmd renders from Python
         run: quarto render example/demo-plots.qmd
 
+      - name: demo-explorer.qmd renders from Python
+        run: quarto render example/demo-explorer.qmd
+
       - name: Each rendered demo loads its plugins
         run: |
           check() {
@@ -66,15 +69,16 @@ jobs:
           }
           check example/demo.html RevealThumbnailPreview RevealThemeToggle
           check example/demo-plots.html RevealThumbnailPreview RevealThemeToggle RevealPlotSlides
+          check example/demo-explorer.html RevealThumbnailPreview RevealThemeToggle RevealPlotSlides RevealPlotExplorer
 
-      - name: quarto add installs all three into an empty project
+      - name: quarto add installs all four into an empty project
         env:
           QUARTO_PYTHON: /nonexistent/python
         run: |
           project="$RUNNER_TEMP/fresh"
           mkdir -p "$project" && cd "$project"
           quarto add "$GITHUB_WORKSPACE" --no-prompt
-          for ext in thumbnail-preview theme-toggle plot-slides; do
+          for ext in thumbnail-preview theme-toggle plot-slides plot-explorer; do
             test -f "_extensions/$ext/_extension.yml" \
               || { echo "::error::quarto add did not install $ext"; exit 1; }
             # One deck per extension, listing only that one: each must work
@@ -102,7 +106,7 @@ jobs:
       - name: Assemble the Pages site
         run: |
           mkdir -p _site
-          cp example/demo.html example/demo-plots.html _site/
+          cp example/demo.html example/demo-plots.html example/demo-explorer.html _site/
           cp -r example/demo_files _site/
           cat > _site/index.html <<'EOF'
           <!doctype html>
@@ -129,13 +133,15 @@ jobs:
           <body>
           <main>
             <h1>quarto-thumbnail-preview</h1>
-            <p>Three Quarto Reveal.js extensions for figure decks. Rendered by CI from
+            <p>Four Quarto Reveal.js extensions for figure decks. Rendered by CI from
               <a href="https://github.com/Lucasfrit/quarto-thumbnail-preview">the repository</a>.</p>
             <ul>
               <li><a href="demo.html">demo.qmd</a>
                 <span>The thumbnail rail and the light/dark toggle. Press <code>P</code> for the rail, <code>Shift+D</code> for the theme.</span></li>
               <li><a href="demo-plots.html">demo-plots.qmd</a>
                 <span>A calculation slide, then a Plotly figure that stays sized to its slide and follows the theme.</span></li>
+              <li><a href="demo-explorer.html">demo-explorer.qmd</a>
+                <span>A dropdown, a slider and toggles on a frequency response, and a 240 000-sample signal you can zoom to every sample. Synthetic data.</span></li>
             </ul>
           </main>
           </body>

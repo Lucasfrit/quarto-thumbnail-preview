@@ -5,7 +5,7 @@
 **[Live demos](https://lucasfrit.github.io/quarto-thumbnail-preview/)** - rendered by CI
 from this repository on every push to `main`.
 
-Three [Quarto](https://quarto.org) Reveal.js extensions for decks built around
+Four [Quarto](https://quarto.org) Reveal.js extensions for decks built around
 figures, usable together or one at a time:
 
 | Extension | What it does |
@@ -13,9 +13,10 @@ figures, usable together or one at a time:
 | **`thumbnail-preview`** | A sidebar of real DOM-cloned slide previews that takes real screen width, so the deck rescales beside it instead of sitting underneath |
 | **`theme-toggle`** | Light and dark, following the system, with a corner button and `Shift+D` |
 | **`plot-slides`** | Full-slide Plotly figures that stay sized to their slide and follow the theme, plus a calculation-slide layout to pair with them |
+| **`plot-explorer`** | A dropdown, a slider and toggles for any Plotly figure, plus zoom that draws a long signal as a min/max envelope and sharpens to every sample - all built from tags on the traces |
 
-None of them needs Python. `plot-slides` is only useful if your deck has
-Plotly figures, however you make them.
+None of them needs Python. `plot-slides` and `plot-explorer` are only useful
+if your deck has Plotly figures, however you make them.
 
 ```
 ┌──────────────┬──────────────────────────────────┐
@@ -39,7 +40,7 @@ up your theme, code highlighting, columns and typeset equations.
 quarto add Lucasfrit/quarto-thumbnail-preview
 ```
 
-This installs all three into `_extensions/`. Then list the ones you want:
+This installs all four into `_extensions/`. Then list the ones you want:
 
 ```yaml
 ---
@@ -59,15 +60,16 @@ do not list is installed but never loaded.
 ```bash
 quarto preview example/demo.qmd          # rail and theme toggle - no Python
 quarto preview example/demo-plots.qmd    # adds a Plotly figure - needs Python
+quarto preview example/demo-explorer.qmd # dropdown, slider, toggles, zoom - needs Python
 ```
 
-`demo-plots.qmd` renders its figure from Python with `embed-resources: true`,
+`demo-plots.qmd` and `demo-explorer.qmd` render their figures from Python with
+`embed-resources: true`,
 the way a real figure deck does, so it needs `jupyter`, `numpy` and `plotly`.
 `demo.qmd` needs nothing but Quarto.
 
-Both are also [online](https://lucasfrit.github.io/quarto-thumbnail-preview/), so
-you can try the rail, the theme toggle and a figure slide before installing
-anything.
+All three are also [online](https://lucasfrit.github.io/quarto-thumbnail-preview/),
+so you can try every extension before installing anything.
 
 ## CI
 
@@ -76,11 +78,12 @@ promises this README makes rather than only that something builds:
 
 - `demo.qmd` renders with Python made unusable, so it stays Quarto-only
 - `demo-plots.qmd` renders from Python with `plotly >= 5.18`
+- `demo-explorer.qmd` renders from Python
 - each rendered demo actually loads its plugins
-- `quarto add` into an empty project installs all three, and a deck listing
+- `quarto add` into an empty project installs all four, and a deck listing
   only one of them renders on its own
 
-On `main` it then publishes both demos to GitHub Pages.
+On `main` it then publishes the demos to GitHub Pages.
 
 ## Dark mode
 
@@ -197,6 +200,109 @@ fig.update_layout(meta={"themeRepaint": False})
 | --- | --- | --- |
 | `resize` | `true` | Keep figures sized to their slide. |
 | `theme` | `true` | Repaint figures when the theme changes. |
+
+## Plot explorer
+
+A fourth extension, **`plot-explorer`**, puts controls on any Plotly figure: a
+dropdown, a slider, toggles, and zoom for long signals. **[See it
+live](https://lucasfrit.github.io/quarto-thumbnail-preview/demo-explorer.html)**
+- all data in that demo is synthetic.
+
+```yaml
+revealjs-plugins:
+  - plot-explorer
+```
+
+There is no helper library. The controls are built in the browser from tags
+on the figure, so it works however the figure was made - Python, R or plain
+JavaScript.
+
+### Dropdown, slider, toggles
+
+Tag each trace with what it belongs to, and say which controls the figure wants:
+
+```python
+fig.add_scatter(x=f, y=magnitude, meta={
+    "set": "SIM_20260913_rigA_fn42Hz_R1",   # which dropdown entry
+    "step": 0.02,                           # which slider position
+    "group": "measured",                    # which toggle
+})
+
+fig.update_layout(meta={"explorer": {
+    "dropdown": "recording",                # label, or true
+    "slider": "damping",                    # label, or true
+    "sliderFormat": "ζ = {value}",          # optional
+    "toggles": True,                        # or a label
+    "default": {"set": "SIM_20260913_rigA_fn42Hz_R1", "step": 0.02,
+                "groups": ["measured", "model"]},
+}})
+```
+
+A trace with no `set` shows for every entry, with no `step` at every slider
+position, and with no `group` always. Numeric `step` values are sorted; others
+keep their order. One `group` drives every trace carrying it, across subplots,
+so a single box shows magnitude and phase together.
+
+Everything is pre-computed - a published deck cannot re-run your analysis - so
+the figure holds every combination and the controls only choose what is shown.
+
+**Why not Plotly's own dropdowns and sliders?** A Plotly control carries a fixed
+argument list, so every step has to spell out the other controls' choices; with
+two present, whichever was used last silently resets the other. Here what is
+shown is always the intersection of all controls. And an HTML checkbox can be
+*disabled*, which a legend entry cannot.
+
+### The rules it follows
+
+- **Every dropdown entry draws when chosen.** If none of the ticked groups
+  exists in that entry, the ones that do are ticked. Unticking a box yourself
+  is never undone.
+- **A missing curve is greyed out**, with the reason on hover, rather than
+  offered and drawing nothing.
+- **A missing slider position snaps** to the nearest one the entry has, and
+  the readout says so. The console warns you once about the gap.
+- **Name dropdown entries in full** - a file name, not "run 2". The plugin shows
+  whatever you tag; the convention is what makes a figure traceable.
+
+### Zoom for long signals
+
+A 240 000-sample signal drawn on an 800-pixel plot shows nothing more than 800
+columns can. Give the trace empty `x`/`y` and its samples in `meta.zoom`:
+
+```python
+import base64, numpy as np
+
+def zoom_samples(x0, dx, y, resolution):
+    y = np.asarray(y, dtype=float)
+    offset = float((y.max() + y.min()) / 2)
+    stored = np.round((y - offset) / resolution).astype("<i2")
+    return {"x0": x0, "dx": dx, "dtype": "int16", "scale": resolution,
+            "offset": offset, "y": base64.b64encode(stored.tobytes()).decode()}
+
+fig.add_scatter(x=[], y=[], meta={"zoom": zoom_samples(0.0, 1 / fs, signal, 0.01)})
+```
+
+The plugin keeps the samples in the browser and draws **one min/max pair per
+pixel column** for whatever is on screen, rebuilt on every zoom:
+
+- no peak is lost when zoomed out - a 2 ms spike still shows at full height;
+- nothing is invented - it is the envelope of the real samples, not smoothing;
+- zoomed in far enough, it draws **every sample**, and the readout says which
+  you are looking at.
+
+`dtype` is `float32` (default), `float64`, `int16` or `uint16`; with an integer
+type each stored value times `scale` plus `offset` is the sample. `int16` halves
+the size of float32, which is what makes a long recording affordable in a deck.
+A plain JSON array works too. Samples are uniformly spaced (`x0`, `dx`).
+Zoomable traces can carry `set`/`group` tags like any other, so a dropdown can
+switch between recordings. Double-click restores the full record.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `rawThreshold` | `0` | Visible samples below which every sample is drawn; `0` means the plot's width in pixels |
+
+Figures drawn after the deck loads are wired on the next slide change; call
+`RevealPlotExplorer.refresh()` to wire them immediately.
 
 ## Configuration
 

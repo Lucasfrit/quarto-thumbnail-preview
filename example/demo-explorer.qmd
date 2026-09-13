@@ -1,0 +1,288 @@
+---
+title: "Plot Explorer Demo"
+subtitle: "Dropdown, slider, toggles and zoom on Plotly figures · synthetic data"
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    progress: false
+    transition: none
+    background-transition: none
+    width: 1050
+    height: 700
+    # Inline every library, the way a real deck does: a deck that needs the
+    # internet to draw anything fails in the room rather than at build time.
+    embed-resources: true
+revealjs-plugins:
+  - thumbnail-preview
+  - theme-toggle
+  - plot-slides
+  - plot-explorer
+thumbnail-preview:
+  mode: pinned
+  drawerWidth: 240
+  shortcut: p
+  allowModeToggle: true
+theme-toggle:
+  default: system
+  shortcut: D
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+```{python}
+# | echo: false
+# Everything in this deck is SYNTHETIC: made-up systems and made-up runs,
+# generated here from a fixed seed. The "recording" names are invented to
+# look like a rig's file names, because full names in a dropdown are the
+# convention this demo exists to show.
+import base64
+
+import numpy as np
+import plotly.graph_objects as go
+import plotly.io as pio
+from plotly.subplots import make_subplots
+
+# The "notebook" renderer defines the AMD module locally, so figures work with
+# no network; "notebook_connected" points requirejs at a CDN instead.
+pio.renderers.default = "notebook"
+PLOTLY_CONFIG = {"displaylogo": False, "responsive": True}
+BLUE, ORANGE, GREEN = "#1f77b4", "#ff7f0e", "#2ca02c"
+rng = np.random.default_rng(7)
+
+
+def zoom_samples(x0, dx, y, resolution):
+    """meta.zoom for a long signal: the samples, compactly, for the browser.
+
+    Stored as 16-bit integers of `resolution` units each - half the size of
+    float32, and far finer than anything on screen - little-endian, base64.
+    The trace itself starts empty; the plugin draws what is on screen from these.
+    """
+    y = np.asarray(y, dtype=float)
+    offset = float((y.max() + y.min()) / 2)
+    stored = np.round((y - offset) / resolution)
+    if np.abs(stored).max() > 32767:
+        raise ValueError("resolution too fine for int16 over this signal's range")
+    return {"x0": float(x0), "dx": float(dx), "dtype": "int16",
+            "scale": float(resolution), "offset": offset,
+            "y": base64.b64encode(stored.astype("<i2").tobytes()).decode("ascii")}
+```
+
+## What this deck shows
+
+- **Dropdown** - pick an entry; entries are named in full
+- **Slider** - an ordered parameter, one position per pre-computed value
+- **Toggles** - one box per curve group, driving it on every subplot
+- **Zoom** - a long signal drawn as a min/max envelope, sharpening to every
+  sample as you zoom in
+
+All four come from tags on the traces - `trace.meta` and `layout.meta` - so
+they work however the figure was made. **All data here is synthetic.**
+
+## A synthetic frequency response {.calc-slide}
+
+::: {.columns}
+::: {.column width="50%"}
+
+$$H(\omega) = \frac{1/k}{1 - r^2 + 2i\zeta r}, \qquad r = \frac{\omega}{\omega_n} \tag{1}$$
+
+$$\tilde H = H\,e^{\,\varepsilon_m + i\varepsilon_\varphi},\quad
+\varepsilon_m \sim \mathcal{N}(0, 0.08^2),\ \varepsilon_\varphi \sim \mathcal{N}(0, 0.05^2) \tag{2}$$
+
+"Measured" is (2): the model (1) with noise on magnitude and phase.
+
+:::
+::: {.column width="50%"}
+
+| Synthetic recording | $f_n$ | $k$ | model |
+|---|---:|---:|:--:|
+| `SIM_20260913_rigA_fn42Hz_R1` | 42 Hz | 1.0 | yes |
+| `SIM_20260913_rigB_fn67Hz_R1` | 67 Hz | 1.6 | yes |
+| `SIM_20260913_rigC_fn31Hz_R1_nofit` | 31 Hz | 0.7 | **no** |
+
+$\zeta \in \{0.01,\ 0.02,\ 0.05,\ 0.10\}$ on the slider.
+
+:::
+:::
+
+The third recording has no fitted model, on purpose: its **model** toggle is
+greyed out rather than offering a curve that would draw nothing.
+
+## Frequency response explorer {.plot-slide}
+
+```{python}
+f = np.geomspace(2, 200, 700)
+SYSTEMS = {
+    "SIM_20260913_rigA_fn42Hz_R1": dict(fn=42.0, k=1.0, fitted=True),
+    "SIM_20260913_rigB_fn67Hz_R1": dict(fn=67.0, k=1.6, fitted=True),
+    "SIM_20260913_rigC_fn31Hz_R1_nofit": dict(fn=31.0, k=0.7, fitted=False),
+}
+ZETAS = (0.01, 0.02, 0.05, 0.10)
+DEFAULT = {"set": "SIM_20260913_rigA_fn42Hz_R1", "step": 0.02,
+           "groups": ["measured", "model"]}
+
+
+def response(fn, k, zeta):
+    r = f / fn
+    return (1.0 / k) / (1.0 - r**2 + 2j * zeta * r)
+
+
+fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                    row_heights=[0.66, 0.34], vertical_spacing=0.05)
+for name, system in SYSTEMS.items():
+    for zeta in ZETAS:
+        model = response(system["fn"], system["k"], zeta)
+        measured = model * np.exp(rng.normal(0, 0.08, f.size)
+                                  + 1j * rng.normal(0, 0.05, f.size))
+        shown = name == DEFAULT["set"] and zeta == DEFAULT["step"]
+        curves = [("measured", measured, dict(color=BLUE, width=1.2))]
+        if system["fitted"]:
+            curves.append(("model", model, dict(color=ORANGE, width=2, dash="dash")))
+        for group, h, line in curves:
+            tag = {"set": name, "step": zeta, "group": group}
+            fig.add_scatter(x=f, y=np.abs(h), mode="lines", line=line, name=group,
+                            meta=tag, visible=shown, row=1, col=1)
+            # Unwrapped: above resonance the phase sits at -180 degrees, and
+            # wrapped noise there flips between -180 and +180 on every sample.
+            fig.add_scatter(x=f, y=np.degrees(np.unwrap(np.angle(h))), mode="lines", line=line,
+                            name=group, meta=tag, visible=shown, row=2, col=1)
+
+fig.update_xaxes(type="log", row=1, col=1)
+fig.update_xaxes(type="log", title_text="Frequency [Hz]", row=2, col=1)
+fig.update_yaxes(type="log", title_text="|H| [µm/N]", row=1, col=1)
+fig.update_yaxes(title_text="phase [°]", range=[-190, 10], row=2, col=1)
+fig.update_layout(
+    height=560, showlegend=False, margin=dict(l=70, r=20, t=6, b=45),
+    meta={"explorer": {
+        "dropdown": "recording",
+        "slider": "damping",
+        "sliderFormat": "ζ = {value}",
+        "toggles": True,
+        "default": DEFAULT,
+    }},
+)
+fig.show(config=PLOTLY_CONFIG)
+```
+
+::: {.plot-caption}
+Dropdown: recording, named in full · slider: damping ratio · toggles drive
+magnitude and phase together · drag a box to zoom, double-click to reset
+:::
+
+::: {.notes}
+Switch to rigC: the model toggle greys out, because that recording has no
+fitted model. The slider keeps its position across recordings - every
+recording carries every damping value.
+:::
+
+## Zooming a long signal {.calc-slide}
+
+Two synthetic run-ups: **240 000 samples each**, 120 s at 2 kHz, sweeping
+5 → 50 Hz through a resonance, with a few 2 ms knocks hidden in them.
+
+$$x(t) = A\,G\!\left(\tfrac{f(t)}{f_n}\right)\sin\varphi(t) + \varepsilon,
+\qquad f(t) = 5 + 45\,\tfrac{t}{120\ \mathrm{s}} \tag{3}$$
+
+Drawing 240 000 points on an 800-pixel plot shows nothing more than 800
+columns can - so the plugin draws **one min/max pair per pixel column** for
+whatever is on screen, rebuilt on every zoom:
+
+- no peak is lost - a 2 ms knock shows at full width as a spike
+- nothing is invented - it is the envelope of real samples, not a smoothing
+- zoom far enough and it switches to **every sample**, and says so
+
+The samples travel in the page as 16-bit integers with a scale (`meta.zoom`),
+half the size of float32; the trace itself starts empty.
+
+## Run-up explorer {.plot-slide}
+
+```{python}
+fs, duration = 2000.0, 120.0
+t = np.arange(int(fs * duration)) / fs
+f_inst = 5.0 + 45.0 * t / duration
+phase = 2 * np.pi * np.cumsum(f_inst) / fs
+RUNS = {
+    "SIM_20260913_runup_A_R1": dict(fn=30.0, knocks=(15.0, 95.0, 110.0)),
+    "SIM_20260913_runup_B_R1": dict(fn=24.0, knocks=(12.0, 88.0, 105.0)),
+}
+KNOCK = np.array([80.0, -60.0, 40.0, -20.0])   # 2 ms at 2 kHz
+
+fig2 = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                     row_heights=[0.7, 0.3], vertical_spacing=0.05)
+for name, run in RUNS.items():
+    ratio = f_inst / run["fn"]
+    zeta = 0.04
+    gain = 1.0 / np.sqrt((1 - ratio**2) ** 2 + (2 * zeta * ratio) ** 2)
+    lag = np.arctan2(2 * zeta * ratio, 1 - ratio**2)
+    displacement = 12.0 * gain * np.sin(phase - lag) + rng.normal(0, 1.5, t.size)
+    for when in run["knocks"]:
+        i = int(when * fs)
+        displacement[i:i + KNOCK.size] += KNOCK
+    excitation = np.sin(phase) + rng.normal(0, 0.02, t.size)
+    first = name == "SIM_20260913_runup_A_R1"
+    fig2.add_scatter(x=[], y=[], mode="lines", line=dict(color=BLUE, width=1),
+                     name="displacement", visible=first, row=1, col=1,
+                     meta={"set": name, "group": "displacement",
+                           "zoom": zoom_samples(0.0, 1 / fs, displacement, 0.01)})
+    fig2.add_scatter(x=[], y=[], mode="lines", line=dict(color=GREEN, width=1),
+                     name="excitation", visible=first, row=2, col=1,
+                     meta={"set": name, "group": "excitation",
+                           "zoom": zoom_samples(0.0, 1 / fs, excitation, 0.0001)})
+
+fig2.update_xaxes(title_text="Time [s]", row=2, col=1)
+fig2.update_yaxes(title_text="displacement [µm]", row=1, col=1)
+fig2.update_yaxes(title_text="excitation [V]", row=2, col=1)
+fig2.update_layout(
+    height=560, showlegend=False, margin=dict(l=70, r=20, t=6, b=45),
+    meta={"explorer": {"dropdown": "recording", "toggles": True}},
+)
+fig2.show(config=PLOTLY_CONFIG)
+```
+
+::: {.plot-caption}
+Dropdown: run, named in full · toggles: channel · drag a box around a knock to
+zoom · the readout says whether you are seeing an envelope or every sample
+:::
+
+::: {.notes}
+Run A has knocks at 15, 95 and 110 s; run B at 12, 88 and 105 s. Each is 2 ms
+wide - four samples - and still shows at full height in the whole-record
+view, because a min/max envelope keeps every extreme.
+:::
+
+## Tagging your own figure
+
+```python
+fig.add_scatter(
+    x=f, y=magnitude,
+    meta={"set": "SIM_20260913_rigA_fn42Hz_R1",   # dropdown entry
+          "step": 0.02,                           # slider position
+          "group": "measured"},                   # toggle
+)
+fig.update_layout(meta={"explorer": {
+    "dropdown": "recording", "slider": "damping",
+    "sliderFormat": "ζ = {value}", "toggles": True,
+    "default": {"set": "...", "step": 0.02, "groups": ["measured"]},
+}})
+
+# A long signal: empty x/y, samples in meta.zoom (base64; float32 by
+# default, or int16 with a scale to halve the size)
+fig.add_scatter(x=[], y=[], meta={"zoom": {
+    "x0": 0.0, "dx": 1 / fs, "dtype": "int16", "scale": 0.01, "y": b64}})
+```
+
+Any tool that writes Plotly JSON can do this - the plugin reads the tags in the
+browser.
+
+## The rules it follows
+
+- **Every dropdown entry draws** the moment it is chosen - if none of the
+  ticked groups exists there, its groups are ticked instead
+- **A missing curve is greyed out**, with the reason on hover, never offered
+- **A missing slider position snaps** to the nearest one the entry has, and
+  the readout says so
+- **Controls compose** - what is visible is the intersection of all of them,
+  so no control resets another
+- **No peak is lost when zoomed out**, and every sample is shown when zoomed in

@@ -1,0 +1,106 @@
+/*
+ * RevealPlotExplorer styling: the control bar above a figure.
+ *
+ * Deliberately quiet - it sits above a figure that is the content of the
+ * slide - and sized in px rather than em, because reveal scales the whole
+ * slide and an em-sized bar would grow with a heading's font size.
+ *
+ * Colours come from theme-toggle's variables when that extension is present
+ * and fall back to currentColor otherwise, so the bar reads correctly in a
+ * dark deck without depending on the toggle.
+ */
+
+.reveal .pe-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin: 0 0 4px 0.3em;
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: left;
+  color: var(--deck-theme-fg, currentColor);
+}
+
+.reveal .pe-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.reveal .pe-label {
+  opacity: 0.7;
+}
+
+.reveal .pe-bar select {
+  max-width: 34em;
+  font: inherit;
+  font-size: 14px;
+  padding: 1px 4px;
+  color: var(--deck-theme-fg, inherit);
+  background: var(--deck-theme-panel, transparent);
+  border: 1px solid var(--deck-theme-rule, #c8c8c8);
+  border-radius: 4px;
+}
+
+.reveal .pe-bar input[type="range"] {
+  width: 150px;
+  margin: 0;
+  accent-color: var(--deck-theme-accent, #1f77b4);
+}
+
+.reveal .pe-value {
+  min-width: 4em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reveal .pe-toggles {
+  gap: 12px;
+}
+
+.reveal .pe-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.reveal .pe-toggle input {
+  margin: 0;
+  accent-color: var(--deck-theme-accent, #1f77b4);
+}
+
+/* The curve's own colour, so a box is matched to its line at a glance. */
+.reveal .pe-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+/* A group the current selection does not have: shown, but greyed and
+   explained on hover, rather than offering a curve that would draw nothing. */
+.reveal .pe-toggle.pe-unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.reveal .pe-readout {
+  margin-left: auto;
+  font-size: 13px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A thumbnail is a picture of the slide, not a second set of controls. */
+.tp-slide-clone .pe-bar * {
+  pointer-events: none !important;
+}
+
+@media print {
+  .reveal .pe-bar input[type="range"] { display: none; }
+}

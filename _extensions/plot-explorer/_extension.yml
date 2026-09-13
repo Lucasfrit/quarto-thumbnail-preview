@@ -1,0 +1,18 @@
+title: Plot Explorer
+author: Lucasfrit
+version: 0.1.0
+quarto-required: ">=1.2.0"
+contributes:
+  revealjs-plugins:
+    - name: RevealPlotExplorer
+      script:
+        - plot-explorer.js
+      stylesheet:
+        - plot-explorer.css
+      config:
+        plotExplorer:
+          # Below this many visible samples a zoomable trace draws every sample;
+          # above it, one min/max pair per pixel column. 0 means "the plot's
+          # width in pixels", which is the point where a sample per column is
+          # all the screen can show anyway.
+          rawThreshold: 0

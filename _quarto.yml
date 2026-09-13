@@ -13,3 +13,4 @@ project:
   render:
     - example/demo.qmd
     - example/demo-plots.qmd
+    - example/demo-explorer.qmd
