@@ -1,0 +1,165 @@
+name: Render demos
+
+# Renders both demos on every push and pull request, installs the extensions
+# the way a user does into an empty project, and publishes the rendered demos
+# to GitHub Pages from main.
+#
+# Each check is a promise the README makes:
+#   - demo.qmd needs nothing but Quarto        -> rendered with Python unusable
+#   - demo-plots.qmd renders from Python        -> rendered with plotly >= 5.18
+#   - `quarto add` installs all three and each
+#     works in a deck that lists only it        -> a fresh project, no Python
+#   - every rendered demo actually loads its
+#     plugins, rather than rendering without     -> grep for each plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 1.10.18
+
+      - name: demo.qmd renders with no Python
+        env:
+          # Pointed at nothing: if this demo ever grows a Python chunk, this
+          # step fails instead of quietly using the runner's system Python.
+          QUARTO_PYTHON: /nonexistent/python
+        run: quarto render example/demo.qmd
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install what demo-plots.qmd needs
+        # plotly older than 5.18 renders figure explorers as empty axes with
+        # no error, so the floor is stated rather than left to the resolver.
+        run: python -m pip install --quiet jupyter numpy "plotly>=5.18"
+
+      - name: demo-plots.qmd renders from Python
+        run: quarto render example/demo-plots.qmd
+
+      - name: Each rendered demo loads its plugins
+        run: |
+          check() {
+            for plugin in "${@:2}"; do
+              grep -q "$plugin" "$1" || { echo "::error::$1 does not load $plugin"; exit 1; }
+            done
+            echo "$1 loads ${*:2}"
+          }
+          check example/demo.html RevealThumbnailPreview RevealThemeToggle
+          check example/demo-plots.html RevealThumbnailPreview RevealThemeToggle RevealPlotSlides
+
+      - name: quarto add installs all three into an empty project
+        env:
+          QUARTO_PYTHON: /nonexistent/python
+        run: |
+          project="$RUNNER_TEMP/fresh"
+          mkdir -p "$project" && cd "$project"
+          quarto add "$GITHUB_WORKSPACE" --no-prompt
+          for ext in thumbnail-preview theme-toggle plot-slides; do
+            test -f "_extensions/$ext/_extension.yml" \
+              || { echo "::error::quarto add did not install $ext"; exit 1; }
+            # One deck per extension, listing only that one: each must work
+            # without the other two.
+            cat > "only-$ext.qmd" <<EOF
+          ---
+          title: "only $ext"
+          format: revealjs
+          revealjs-plugins:
+            - $ext
+          ---
+
+          ## One {.calc-slide}
+
+          \$\$E = mc^2\$\$
+
+          ## Two {.plot-slide}
+
+          Layout only.
+          EOF
+            quarto render "only-$ext.qmd"
+            echo "only-$ext.qmd rendered"
+          done
+
+      - name: Assemble the Pages site
+        run: |
+          mkdir -p _site
+          cp example/demo.html example/demo-plots.html _site/
+          cp -r example/demo_files _site/
+          cat > _site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>quarto-thumbnail-preview demos</title>
+          <style>
+            :root { color-scheme: light dark; --fg: #1f2328; --muted: #59636e; --bg: #ffffff; --line: #d1d9e0; --link: #0969da; }
+            @media (prefers-color-scheme: dark) { :root { --fg: #e6e6e6; --muted: #9198a1; --bg: #111418; --line: #333a44; --link: #6ab0f3; } }
+            body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+            main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
+            h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+            p { color: var(--muted); margin: 0 0 1.5rem; }
+            a { color: var(--link); }
+            ul { list-style: none; padding: 0; margin: 0; }
+            li { border-top: 1px solid var(--line); padding: 1rem 0; }
+            li a { font-weight: 600; }
+            li span { display: block; color: var(--muted); font-size: .95rem; }
+            code { font-size: .9em; }
+          </style>
+          </head>
+          <body>
+          <main>
+            <h1>quarto-thumbnail-preview</h1>
+            <p>Three Quarto Reveal.js extensions for figure decks. Rendered by CI from
+              <a href="https://github.com/Lucasfrit/quarto-thumbnail-preview">the repository</a>.</p>
+            <ul>
+              <li><a href="demo.html">demo.qmd</a>
+                <span>The thumbnail rail and the light/dark toggle. Press <code>P</code> for the rail, <code>Shift+D</code> for the theme.</span></li>
+              <li><a href="demo-plots.html">demo-plots.qmd</a>
+                <span>A calculation slide, then a Plotly figure that stays sized to its slide and follows the theme.</span></li>
+            </ul>
+          </main>
+          </body>
+          </html>
+          EOF
+          ls -la _site
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: render
+    # Pages needs the repository to be public on this plan, and pull requests
+    # must never publish.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && !github.event.repository.private
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

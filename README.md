@@ -1,5 +1,10 @@
 # quarto-thumbnail-preview
 
+[![Render demos](https://github.com/Lucasfrit/quarto-thumbnail-preview/actions/workflows/demo.yml/badge.svg)](https://github.com/Lucasfrit/quarto-thumbnail-preview/actions/workflows/demo.yml)
+
+**[Live demos](https://lucasfrit.github.io/quarto-thumbnail-preview/)** - rendered by CI
+from this repository on every push to `main`.
+
 Three [Quarto](https://quarto.org) Reveal.js extensions for decks built around
 figures, usable together or one at a time:
 
@@ -59,6 +64,23 @@ quarto preview example/demo-plots.qmd    # adds a Plotly figure - needs Python
 `demo-plots.qmd` renders its figure from Python with `embed-resources: true`,
 the way a real figure deck does, so it needs `jupyter`, `numpy` and `plotly`.
 `demo.qmd` needs nothing but Quarto.
+
+Both are also [online](https://lucasfrit.github.io/quarto-thumbnail-preview/), so
+you can try the rail, the theme toggle and a figure slide before installing
+anything.
+
+## CI
+
+`.github/workflows/demo.yml` runs on every push and pull request. It checks the
+promises this README makes rather than only that something builds:
+
+- `demo.qmd` renders with Python made unusable, so it stays Quarto-only
+- `demo-plots.qmd` renders from Python with `plotly >= 5.18`
+- each rendered demo actually loads its plugins
+- `quarto add` into an empty project installs all three, and a deck listing
+  only one of them renders on its own
+
+On `main` it then publishes both demos to GitHub Pages.
 
 ## Dark mode
 
